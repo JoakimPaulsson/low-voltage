@@ -1,17 +1,19 @@
-pub mod device_type;
-use device_type::*;
-
 pub mod battery_level;
 use battery_level::*;
 
 pub mod device_state;
 use device_state::*;
 
+pub mod device_type;
+use device_type::*;
+
 pub mod warning_level;
 use warning_level::*;
 
 pub mod time_until;
 use time_until::*;
+
+use crate::battery_interface::BatteryInterface;
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
 pub struct Percentage(f64);
@@ -63,8 +65,6 @@ impl From<String> for IconName {
         Self(value)
     }
 }
-
-
 
 #[derive(Debug)]
 pub struct BatteryInfo {
@@ -142,5 +142,45 @@ impl BatteryInfo {
 
     pub fn set_propertry(&mut self, prop: BatteryInfoProperties) {
         prop.insert_property_by_mut_ref(self);
+    }
+
+    pub fn get<T: BatteryInterface>() -> Option<Self> {
+        <T as BatteryInterface>::battery_info().ok()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::battery_interface::upower::UPower;
+
+    use super::*;
+
+    #[test]
+    fn canoncial_use_case() {
+
+        let batt_info = BatteryInfo::get::<UPower>();
+
+        insta::assert_debug_snapshot!(batt_info.is_some(), @"true");
+
+        let batt_info = batt_info.unwrap();
+
+        let device_type = batt_info.device_type;
+        let device_state = batt_info. device_state;
+        let percentage = batt_info. percentage;
+        let power_supply = batt_info. power_supply;
+        let battery_level = batt_info. battery_level;
+        let icon_name = batt_info. icon_name;
+        let time_until = batt_info. time_until;
+        let warning_level = batt_info. warning_level;
+
+        
+        insta::assert_debug_snapshot!(device_type.is_some(), @"true");
+        insta::assert_debug_snapshot!(device_state.is_some(), @"true");
+        insta::assert_debug_snapshot!(percentage.is_some(), @"true");
+        insta::assert_debug_snapshot!(power_supply.is_some(), @"true");
+        insta::assert_debug_snapshot!(battery_level.is_some(), @"true");
+        insta::assert_debug_snapshot!(icon_name.is_some(), @"true");
+        insta::assert_debug_snapshot!(time_until.is_some(), @"true");
+        insta::assert_debug_snapshot!(warning_level.is_some(), @"true");
     }
 }

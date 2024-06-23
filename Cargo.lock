@@ -174,18 +174,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c4b4d0bd25bd0b74681c0ad21497610ce1b7c91b1022cd21c80c6fbdd9476b0"
 
 [[package]]
-name = "battery"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "insta",
- "once_cell",
- "regex",
- "seq-macro",
- "zbus",
-]
-
-[[package]]
 name = "bitflags"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -494,6 +482,18 @@ name = "linux-raw-sys"
 version = "0.4.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "78b3ae25bc7c8c38cec158d1f2757ee79e9b3740fbc7ccf0e59e4b08d793fa89"
+
+[[package]]
+name = "low-voltage"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "insta",
+ "once_cell",
+ "regex",
+ "seq-macro",
+ "zbus",
+]
 
 [[package]]
 name = "memchr"

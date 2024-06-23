@@ -2,6 +2,8 @@ use std::time::Duration;
 
 use anyhow::bail;
 
+use seq_macro::seq;
+
 use super::*;
 
 pub(super) fn handle_time(

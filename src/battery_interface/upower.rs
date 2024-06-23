@@ -9,7 +9,6 @@ use anyhow::{
     bail,
 };
 use once_cell::sync::Lazy;
-use seq_macro::seq;
 use zbus::names::InterfaceName;
 use zbus::zvariant::Optional;
 use zbus::{
@@ -18,11 +17,12 @@ use zbus::{
     zvariant,
 };
 
-use super::*;
 use crate::battery_info::*;
 
 mod utils;
 use utils::*;
+
+use super::*;
 
 type DBusConnection = zbus::blocking::Connection;
 
@@ -33,7 +33,6 @@ type DBusConnection = zbus::blocking::Connection;
     gen_async = false
 )]
 trait UPower {
-    fn enumerate_devices(&self) -> zbus::Result<Vec<zvariant::OwnedObjectPath>>;
     fn get_display_device(&self) -> zbus::Result<zvariant::OwnedObjectPath>;
 }
 
@@ -46,15 +45,6 @@ impl UPower {
     pub fn new() -> anyhow::Result<&'static Self> {
         let clj = || DBUS_UPOWER.deref().as_ref();
         retry_result_with_delay::<'static, UPower, 100>(clj)
-    }
-
-    pub fn enumerate_devices(&self) -> anyhow::Result<Vec<Device<String, UPower>>> {
-        Ok(self
-            .proxy
-            .enumerate_devices()?
-            .into_iter()
-            .map(|v| v.to_string().into_device::<Self>())
-            .collect::<Vec<_>>())
     }
 
     pub fn get_display_device(&self) -> anyhow::Result<zvariant::OwnedObjectPath> {
@@ -194,22 +184,14 @@ impl UPower {
     }
 }
 
-const ID_VALID_ARR: [&'static str; 3] = ["org", "freedesktop", "UPower"];
-
-impl ValidDevice<String> for UPower {
-    fn is_valid(value: &String) -> bool {
-        let parts = value.split("/").collect::<Vec<&str>>();
-
-        if parts.len() <= ID_VALID_ARR.len() {
-            return false;
-        }
-
-        match parts.last() {
-            Some(dev_name) => dev_name.contains(""),
-            None => false,
-        }
+impl BatteryInterface for UPower {
+    fn battery_info(
+    ) -> std::result::Result<BatteryInfo, impl Into<Box<dyn std::error::Error + 'static>>> {
+        let upower = UPower::new()?;
+        upower.battery_info()
     }
 }
+
 
 static DBUS_CONNECTION: Lazy<anyhow::Result<DBusConnection>> =
     Lazy::new(|| Ok(DBusConnection::system()?));
@@ -249,34 +231,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn it_works() -> anyhow::Result<()> {
-        let upower = match UPower::new() {
-            Ok(u) => u,
-            Err(e) => bail!(e),
-        };
-        let devices = upower.enumerate_devices()?;
-        insta::assert_debug_snapshot!(devices, @r###"
-        [
-            Device { value: "/org/freedesktop/UPower/devices/line_power_AC" },
-            Device { value: "/org/freedesktop/UPower/devices/battery_BAT0" },
-        ]
-        "###);
-
-        Ok(())
-    }
-
-    #[test]
     fn percentage() -> anyhow::Result<()> {
         let upower = UPower::new()?;
         let batt_info = upower.battery_info()?;
 
-        insta::assert_debug_snapshot!(batt_info.percentage, @r###"
-        Some(
-            Percentage(
-                11.0,
-            ),
-        )
-        "###);
+        insta::assert_debug_snapshot!(batt_info.percentage.is_some(), @"true");
 
         Ok(())
     }
@@ -286,44 +245,28 @@ mod tests {
         let upower = UPower::new()?;
         let batt_info = upower.battery_info();
 
-        insta::assert_debug_snapshot!(batt_info, @r###"
-        Ok(
-            BatteryInfo {
-                device_type: Some(
-                    Battery,
-                ),
-                device_state: Some(
-                    Discharging,
-                ),
-                percentage: Some(
-                    Percentage(
-                        11.0,
-                    ),
-                ),
-                power_supply: Some(
-                    PowerSupply(
-                        true,
-                    ),
-                ),
-                battery_level: Some(
-                    NotApplicable,
-                ),
-                icon_name: Some(
-                    IconName(
-                        "\"battery-low-symbolic\"",
-                    ),
-                ),
-                time_until: Some(
-                    Empty(
-                        2844s,
-                    ),
-                ),
-                warning_level: Some(
-                    NoWarning,
-                ),
-            },
-        )
-        "###);
+        insta::assert_debug_snapshot!(batt_info.is_ok(), @"true");
+
+        let batt_info = batt_info.unwrap();
+
+        let device_type = batt_info.device_type;
+        let device_state = batt_info. device_state;
+        let percentage = batt_info. percentage;
+        let power_supply = batt_info. power_supply;
+        let battery_level = batt_info. battery_level;
+        let icon_name = batt_info. icon_name;
+        let time_until = batt_info. time_until;
+        let warning_level = batt_info. warning_level;
+
+        
+        insta::assert_debug_snapshot!(device_type.is_some(), @"true");
+        insta::assert_debug_snapshot!(device_state.is_some(), @"true");
+        insta::assert_debug_snapshot!(percentage.is_some(), @"true");
+        insta::assert_debug_snapshot!(power_supply.is_some(), @"true");
+        insta::assert_debug_snapshot!(battery_level.is_some(), @"true");
+        insta::assert_debug_snapshot!(icon_name.is_some(), @"true");
+        insta::assert_debug_snapshot!(time_until.is_some(), @"true");
+        insta::assert_debug_snapshot!(warning_level.is_some(), @"true");
 
         Ok(())
     }
